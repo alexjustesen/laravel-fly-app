@@ -4,14 +4,15 @@
 # the PHP version from the user (wherever `flyctl launch` is run)
 # Valid version values are PHP 7.4+
 ARG PHP_VERSION=8.1
-ARG NODE_VERSION=16
+ARG NODE_VERSION=14
 FROM serversideup/php:${PHP_VERSION}-fpm-nginx as base
 
 LABEL fly_launch_runtime="laravel"
 
 RUN apt-get update && apt-get install -y \
     git curl zip unzip rsync ca-certificates vim htop cron \
-    php${DOCKER_VERSION}-pgsql php${DOCKER_VERSION}-swoole php${PHP_VERSION}-xml php${PHP_VERSION}-mbstring \
+    php${DOCKER_VERSION}-pgsql php${PHP_VERSION}-bcmath \
+    php${DOCKER_VERSION}-swoole php${PHP_VERSION}-xml php${PHP_VERSION}-mbstring \
     && apt-get clean \
     && rm -rf /var/lib/apt/lists/* \
 
@@ -27,7 +28,6 @@ RUN composer install --optimize-autoloader --no-dev \
     && echo "MAILTO=\"\"\n* * * * * webuser /usr/bin/php /var/www/html/artisan schedule:run" > /etc/cron.d/laravel \
     && rm -rf /etc/cont-init.d/* \
     && cp docker/nginx-websockets.conf /etc/nginx/conf.d/websockets.conf \
-    && cp docker/nginx-default /etc/nginx/sites-available/default \
     && cp docker/entrypoint.sh /entrypoint \
     && chmod +x /entrypoint
 
@@ -40,7 +40,10 @@ RUN if grep -Fq "laravel/octane" /var/www/html/composer.json; then \
             rm -f .rr.yaml; \
         else \
             mv docker/octane-swoole /etc/services.d/octane; \
-        fi \
+        fi; \
+        cp docker/nginx-default-swoole /etc/nginx/sites-available/default; \
+    else \
+        cp docker/nginx-default /etc/nginx/sites-available/default; \
     fi
 
 # Multi-stage build: Build static assets
